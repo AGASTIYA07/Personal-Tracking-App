@@ -275,7 +275,50 @@ def del_calendar(date):
 def index():
     return send_from_directory("templates", "index.html")
 
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "tackora"
+
+@app.route("/admin")
+def admin_panel():
+    return send_from_directory("templates", "admin.html")
+
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    d = request.json
+    if d.get("username") == ADMIN_USERNAME and d.get("password") == ADMIN_PASSWORD:
+        session["admin"] = True
+        return jsonify({"success": True})
+    return jsonify({"error": "Wrong admin username or password"}), 401
+
+@app.route("/api/admin/logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin", None)
+    return jsonify({"success": True})
+
+@app.route("/api/admin/check")
+def admin_check():
+    return jsonify({"ok": session.get("admin", False)})
+
+@app.route("/api/admin/data")
+def admin_data():
+    if not session.get("admin"):
+        return jsonify({"error": "Unauthorized"}), 401
+    db = get_db()
+    users       = [dict(r) for r in db.execute("SELECT id, username, display_name FROM users").fetchall()]
+    expenses    = [dict(r) for r in db.execute("SELECT * FROM expenses ORDER BY date DESC").fetchall()]
+    todos       = [dict(r) for r in db.execute("SELECT * FROM todos ORDER BY created_at DESC").fetchall()]
+    habits      = [dict(r) for r in db.execute("SELECT * FROM habits").fetchall()]
+    goals       = [dict(r) for r in db.execute("SELECT * FROM goals").fetchall()]
+    reflections = [dict(r) for r in db.execute("SELECT * FROM reflections ORDER BY date DESC").fetchall()]
+    reminders   = [dict(r) for r in db.execute("SELECT * FROM reminders ORDER BY datetime DESC").fetchall()]
+    db.close()
+    return jsonify({
+        "users": users, "expenses": expenses, "todos": todos,
+        "habits": habits, "goals": goals, "reflections": reflections,
+        "reminders": reminders
+    })
 if __name__ == "__main__":
     init_db()
-    print("🌌 Dashboard running at http://localhost:8080")
-    app.run(debug=True,host="0.0.0.0",port=8080)
+    print("🌌 Galaxy Dashboard running at http://localhost:5000")
+    import os
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
