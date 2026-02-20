@@ -1,0 +1,6 @@
+.DS_Store
+galaxy.db
+nohup.out
+__pycache__/
+*.pyc
+.env
